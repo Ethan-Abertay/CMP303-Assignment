@@ -44,7 +44,7 @@ void Server::run()
 		dt = clock.restart().asSeconds();		// Restarts the clock and returns the elapased time
 		currentTime += dt;
 
-		printf("\nServer Tick\n");	// Output tick message
+		printf("\nServer Tick:\n");	// Output tick message
 
 		receiveMessages();			// Receive messages
 
@@ -52,6 +52,7 @@ void Server::run()
 
 		// Determine how long to sleep to hit tick rate
 		float delay = tickDelay - (float)clock.getElapsedTime().asMilliseconds();
+		printf("Delay is %.3fms\n", delay);
 		Sleep(delay);
 	}
 }
@@ -69,12 +70,15 @@ void Server::receiveMessages()
 		// Ensure this socket doesn't already exist
 		for (auto &it : clients)	// Iterate through unordered map with constant complexity O(1)
 		{
-			if (it.second->address == sendersIP)
+			if (it.second)
 			{
-				// This socket is already joined, just return
-				printf("Client is already on the server\nResending Join Accept Message...\n");
-				sendJoinAcceptMessage(it.first);
-				return;
+				if (it.second->address == sendersIP && it.second->port == sendersPort)
+				{
+					// This socket is already joined, must return 
+					printf("Client is already on the server\nResending Join Accept Message...\n");
+					sendJoinAcceptMessage(it.first);
+					return;
+				}
 			}
 		}
 		// This is a new socket to add
@@ -103,7 +107,16 @@ void Server::receiveMessages()
 	};
 	auto handleUpdateInfo = [&](UpdateInfoMessage* msg)
 	{
+		// Get the correct client
+		Client* client = clients[msg->ID];
 
+		if (client)
+		{
+			// Add the new packet info on
+			client->newInfoPacket(msg->infoPacket);
+
+			printf("Received info packet from client: %i\n", msg->ID);
+		}
 	};
 
 	// The message buffer is always reset before calling receive
@@ -112,7 +125,7 @@ void Server::receiveMessages()
 	do
 	{
 		// Attempt to read from socket. 
-		sf::Socket::Status status = socket.receive(&msg_buffer, maxMessageSize, receivedSize, sendersIP, sendersPort);
+		sf::Socket::Status status = socket.receive(&msg_buffer, PACKET_LIMIT, receivedSize, sendersIP, sendersPort);
 
 		// Only process successfully received messages
 		if (status == sf::Socket::Done)
@@ -163,7 +176,23 @@ void Server::receiveMessages()
 
 void Server::sendMessages()
 {
+	// This is the method that sends a single packet per client info
+	// This results in a lot of packets being sent which has a greater overhead
+	// But it means a packet loss will only affect one enemy instead of them all
+	// Using one packet containing all client info benefits from less overhead but is more noticable during packet loss
 
+	// Update each client with all other clients's latest information
+	for (auto it = clients.begin(); it != clients.end(); it++)
+	{
+		for (auto it2 = clients.begin(); it2 != clients.end(); it2++)
+		{
+			// Don't send clients info about themselves
+			if (it != it2)
+			{
+				sendUpdateInfo(it2->second, it->second);
+			}
+		}
+	}
 }
 
 void Server::sendJoinAcceptMessage(int ID)
@@ -184,6 +213,20 @@ void Server::sendJoinAcceptMessage(int ID)
 			break;
 		}
 	}
+}
+
+void Server::sendUpdateInfo(Client* enemy, Client* player)
+{
+	UpdateInfoMessage msg;
+	msg.header.messageType = MessageType::UpdateInfo;
+	msg.header.messageSize = sizeof(UpdateInfoMessage);
+	msg.ID = enemy->ID;
+	msg.infoPacket = enemy->getLatestInfoPacket();
+
+	// Attempt to send message
+	socket.send((char*)&msg, msg.header.messageSize, player->address, player->port);
+
+	printf("Sending info about client: %i, to client: %i\n", enemy->ID, player->ID);
 }
 
 template<class A, class B>

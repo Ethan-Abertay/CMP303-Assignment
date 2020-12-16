@@ -26,9 +26,12 @@ private:
 	void receiveMessages();
 	void sendMessages();
 
-	// Auxiliary functions
-	void resetMsgBuffer(int size = maxMessageSize) { memset(&msg_buffer, 0, size); };
+	// Send functions
 	void sendJoinAcceptMessage(int ID);
+	void sendUpdateInfo(Client* enemy, Client* player);		// Data about enemy is sent to player
+
+	// Auxiliary functions
+	void resetMsgBuffer(int size = PACKET_LIMIT) { memset(&msg_buffer, 0, size); };
 	template<class A, class B> bool keyExists(unordered_map<A, B> &map_, A key);
 
 	// Other functions
@@ -38,7 +41,7 @@ private:
 	// Network variables
 	sf::UdpSocket socket;
 	unordered_map<unsigned int, Client*> clients;
-	char msg_buffer[maxMessageSize];
+	char msg_buffer[PACKET_LIMIT];
 
 	// Timing variables
 	sf::Clock clock;

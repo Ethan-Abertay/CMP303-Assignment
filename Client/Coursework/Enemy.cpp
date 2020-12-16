@@ -1,4 +1,5 @@
 #include "Enemy.h"
+#include "NetworkManager.h"
 
 Enemy::Enemy(ID3D11Device* device)
 {
@@ -14,4 +15,13 @@ Enemy::~Enemy()
 		delete mesh;
 		mesh = 0;
 	}
+}
+
+void Enemy::updatePosition(Vector3<float> newPos)
+{
+	XMMATRIX worldMatrix = XMMatrixIdentity();
+	worldMatrix *= XMMatrixTranslation(newPos.x, newPos.y, newPos.z);
+	worldMatrix *= meshTranslation;
+
+	mesh->setWorldMatrix(worldMatrix);
 }

@@ -31,6 +31,7 @@ public:
 
 	// Setters
 	void addWorldMatrix(XMMATRIX m) { worldMatrices.push_back(new XMMATRIX(m)); };
+	void setWorldMatrix(XMMATRIX m) { *worldMatrices[0] = m; };
 	//void addRotationMatrix(XMMATRIX m) { rotationMatrices.push_back(new XMMATRIX(m)); };
 	void setTexture(ID3D11ShaderResourceView* t) { texture = t; };
 	void setHeightmap(ID3D11ShaderResourceView* t) { heightMap = t; };

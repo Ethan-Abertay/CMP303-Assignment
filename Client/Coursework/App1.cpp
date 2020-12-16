@@ -25,11 +25,8 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	// Initialise player
 	player = new Player(camera);
 
-	// Intialise enemy
-	//enemies.push_back(new Enemy(renderer->getDevice()));
-
 	// Initialise network manager
-	networkManager = new NetworkManager(player);
+	networkManager = new NetworkManager(this, player);
 
 	// Initialise shaders
 	sceneShader = new SceneShader(renderer->getDevice(), hwnd);
@@ -242,6 +239,14 @@ bool App1::frame()
 	}
 
 	return true;
+}
+
+Enemy* App1::createEnemy()
+{
+	// Intialise enemy
+	Enemy* newEnemy = new Enemy(renderer->getDevice());		// This object instance (App1) will destroy the enemies
+	enemies.push_back(newEnemy);							// Add this enemy to the vector
+	return newEnemy;	// Return the enemy 
 }
 
 bool App1::render()

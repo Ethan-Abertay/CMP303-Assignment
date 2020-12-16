@@ -32,6 +32,8 @@ public:
 
 	bool frame();
 
+	Enemy* createEnemy();
+
 protected:
 	bool render();
 	void gui();

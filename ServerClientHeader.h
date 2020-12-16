@@ -8,16 +8,16 @@
 #define DEFAULT_PING_PORT 5555
 
 // Tick rates (number of ticks per second)
-#define SERVER_TICK_RATE 2
-#define CLIENT_TICK_RATE 2
+#define SERVER_TICK_RATE 10
+#define CLIENT_TICK_RATE 5
+
+#define PACKET_LIMIT sf::UdpSocket::MaxDatagramSize
 
 #include <string>
 
 // Using declerations
 using std::string;
 
-// Global variables
-const int maxMessageSize = sf::UdpSocket::MaxDatagramSize;	// The maximum number of bytes that can be sent in one message
 
 enum class MessageType
 {
