@@ -63,6 +63,9 @@ void NetworkManager::frame(float dt)
 
 		// Check to see any packets
 		receiveMessages();
+
+		// Manage enemies
+		manageEnemies();
 	}
 }
 
@@ -72,10 +75,55 @@ void NetworkManager::newServer(string newIP, uint32_t newPort)
 	if (newIP == serverIP && newPort == port)
 		return;
 
+	// Return is variables are null
+	if (newIP == "" || newPort == 0)
+		return;
+
 	serverIP = newIP;
 	port = newPort;
 
 	sendJoinRequestMessage();
+}
+
+void NetworkManager::disconnect()
+{
+	// Return is already disconnected
+	if (serverIP == "")
+		return;
+
+	// Tell server this client is disconnecting
+	// If this packet is lost this client will timeout on server and clients
+	ClientDisconnectMessage msg;
+	msg.header.messageType = MessageType::ClientDisconnect;
+	msg.header.messageSize = sizeof(ClientDisconnectMessage);
+	msg.ID = ID;
+	socket.send((char*)&msg, msg.header.messageSize, serverIP, port);
+
+	// Delete all enemies
+	app1->deleteAllEnemies();
+	enemies.clear();
+
+	// Reset variables
+	serverIP = "";
+	port = 0;
+	bConnected = false;
+}
+
+void NetworkManager::shoot(XMFLOAT3 position, XMFLOAT3 forward)
+{
+	if (player->canFire())
+	{
+		// Construct message
+		ProjectileFiredMessage msg;
+		msg.header.messageType = MessageType::ProjectileShot;
+		msg.header.messageSize = sizeof(ProjectileFiredMessage);
+		msg.ID = ID;
+		msg.startPos = XMToVec3(position);
+		msg.velocity = XMToVec3(player->getFireVelocity(forward));
+
+		// Send message
+		socket.send((char*)&msg, msg.header.messageSize, serverIP, port);
+	}
 }
 
 void NetworkManager::receiveMessages()
@@ -86,29 +134,42 @@ void NetworkManager::receiveMessages()
 
 	auto handleUpdateInfo = [&](UpdateInfoMessage* msg)
 	{
-		// Create pointer
-		Enemy* enemy;
-
-		// Check if this enemy doesn't currently exist in our world
-		if (!keyExists(enemies, msg->ID))
+		// If this is a client
+		if (msg->entity == Entity::Client)
 		{
-			// Create new enemy
-			enemy = app1->createEnemy();
+			// Create pointer
+			Enemy* enemy;
 
-			// Add enemy to map
-			enemies[msg->ID] = enemy;
+			// Check if this enemy doesn't currently exist in our world
+			if (!keyExists(enemies, msg->ID))
+			{
+				// Create new enemy
+				enemy = app1->createEnemy();
+
+				// Add enemy to map
+				enemies[msg->ID] = enemy;
+			}
+			else
+			{
+				// Get enemy from map
+				enemy = enemies[msg->ID];
+			}
+
+			// Update enemy
+			enemy->newInfoUpdate(msg->infoPacket);
 		}
-		else
+	};
+	auto handleClientDisconnect = [&](ClientDisconnectMessage * msg)
+	{
+		Enemy* enemy = enemies[msg->ID];
+		if (enemy)
 		{
-			// Get enemy from map
-			enemy = enemies[msg->ID];
+			app1->deleteEnemy(enemy);
+			enemies.erase(msg->ID);
 		}
-
-		// Position enemy correctly
-		enemy->updatePosition(msg->infoPacket.position);
 	};
 
-	do
+	while (true)
 	{
 		sf::Socket::Status status = socket.receive((char*)&msg_buffer, PACKET_LIMIT, receivedSize, sendersIP, sendersPort);
 
@@ -133,6 +194,12 @@ void NetworkManager::receiveMessages()
 				handleUpdateInfo(msg_full);
 				break;
 			}
+			case MessageType::ClientDisconnect:
+			{
+				ClientDisconnectMessage* msg_full = (ClientDisconnectMessage*)&msg_buffer;
+				handleClientDisconnect(msg_full);
+				break;
+			}
 			}
 
 			// Clear the message buffer using the exact size to increase efficiency
@@ -149,7 +216,7 @@ void NetworkManager::receiveMessages()
 			// Reset the message buffer and continue
 			resetMsgBuffer();
 		}
-	} while (true);
+	}
 }
 
 void NetworkManager::sendJoinRequestMessage()
@@ -224,7 +291,10 @@ void NetworkManager::receiveJoinAcceptMessage()
 
 				// Dispatch the ping thread
 				if (pingThread)
+				{
+					pingThread->join();
 					delete pingThread;
+				}
 				pingThread = new thread(&NetworkManager::ping, this);
 			}
 		}
@@ -248,7 +318,6 @@ void NetworkManager::sendPing()
 	// Set variables
 	pingTimer = pingTimeout;
 	bSentPing = true;
-	pingSentTime = currentTime;
 
 	// Build request message
 	PingMessage msg;
@@ -262,7 +331,7 @@ void NetworkManager::sendPing()
 	}
 }
 
-float NetworkManager::receivePing()
+bool NetworkManager::receivePing()
 {
 	size_t receivedSize;
 	sf::IpAddress sendersIP;
@@ -279,16 +348,11 @@ float NetworkManager::receivePing()
 			// Reset boolean
 			bSentPing = false;
 
-			// Calculate ping
-			float receivedTime = currentTime;
-			return receivedTime - pingSentTime;
+			return true;
 		}
 	}
-	else
-	{
-		return -1.f;
-	}
 
+	return false;
 }
 
 void NetworkManager::sendUpdateInfo()
@@ -302,6 +366,7 @@ void NetworkManager::sendUpdateInfo()
 	msg.header.messageSize = sizeof(UpdateInfoMessage);
 	msg.infoPacket.position = XMToVec3(player->getPosition());
 	msg.infoPacket.time = currentTime;
+	msg.entity = Entity::Client;
 	msg.ID = ID;
 
 	// Send message
@@ -317,14 +382,31 @@ Vector3<float> NetworkManager::XMToVec3(XMFLOAT3 f3)
 	return Vector3<float>(f3.x, f3.y, f3.z);
 }
 
+XMFLOAT3 NetworkManager::Vec3ToXM(Vector3<float> v3)
+{
+	return XMFLOAT3(v3.x, v3.y, v3.z);
+}
+
 void NetworkManager::ping()
 {
+	// Initialise time variables
+	auto pingSentTime = chronoClock::now();
+	auto pingArrivedTime = chronoClock::now();
+	auto newLoopTime = chronoClock::now();
+	auto oldLoopTime = chronoClock::now();
+	float dt;	// Delta time in seconds
+
 	while (true)
 	{
+		newLoopTime = chronoClock::now();	// Measure new loop time
+		dt = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::duration<float>(newLoopTime - oldLoopTime)).count() / 1000.f;	// Get duration since last loop
+		oldLoopTime = newLoopTime;			// Set old loop time
+
 		if (!bSentPing)
 		{
 			// Need to send ping
 			sendPing();
+			pingSentTime = chronoClock::now();
 		}
 		else
 		{
@@ -336,11 +418,13 @@ void NetworkManager::ping()
 			if (pingTimer > 0)
 			{
 				// Try to receive ping message
-				float ping = receivePing();	// Returns the ping in seconds
+				bool bGotPing = receivePing();	// Returns the ping in nanoseconds
 
-				if (ping >= 0)			// If a ping was received
+				if (bGotPing)			// If a ping was received
 				{
 					// Handle ping
+					pingArrivedTime = chronoClock::now();
+					float ping = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::duration<float>(pingArrivedTime - pingSentTime)).count();
 					pingSum += ping;	// Add this ping to the sum
 
 					// Handle counter
@@ -350,8 +434,9 @@ void NetworkManager::ping()
 					if (currentPingNo >= noOfTimesToPing)
 					{
 						// Make adjustments to current time
-						ping = pingSum / noOfTimesToPing;	// Get average
+						ping = pingSum / (float)noOfTimesToPing;	// Get average
 						ping /= 2.f;						// Divide by two
+						ping /= 1000.f * 1000.f;			// Convert to seconds from microseconds
 						currentTime -= ping;				// Subtract by value
 
 						// End ping calculations
@@ -363,8 +448,30 @@ void NetworkManager::ping()
 			else
 			{
 				// Send ping again
-				sendPing();
+				bSentPing = false;
 			}
 		}
 	}
 }
+
+void NetworkManager::manageEnemies()
+{
+	vector<unsigned int> eraseKeys;
+
+	// Iterate through enemies are mark them for deletion if they have timed out
+	for (auto it = enemies.begin(); it != enemies.end(); it++)
+	{
+		if (it->second->timeSinceLastMessage >= TIMEOUT)
+		{
+			// Flag key for deletion
+			eraseKeys.push_back(it->first);
+		}
+	}
+
+	for (int i = 0; i < eraseKeys.size(); i++)
+	{
+		app1->deleteEnemy(enemies[eraseKeys[i]]);
+		enemies.erase(eraseKeys[i]);
+	}
+}
+

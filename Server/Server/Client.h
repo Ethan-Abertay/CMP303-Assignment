@@ -25,8 +25,12 @@ public:
 	unsigned short port;
 	unsigned int ID;
 
+	float timeSinceLastMessage = 0;
+
 private:
 	// Game info
-	deque<InfoPacket>* infoPackets;
+	deque<InfoPacket>* infoPackets = 0;
+
+
 };
 

@@ -3,8 +3,9 @@
 #include "camera.h"
 #include "input.h"
 
-
 using namespace DirectX;
+
+class NetworkManager;
 
 class FPCamera : public Camera
 {
@@ -23,6 +24,8 @@ public:
 	//~FPCamera();
 
 	void move(float dt);	///< Move camera, handles basic camera movement
+
+	void setNetworkManager(NetworkManager* ptr) { networkManager = ptr; };
 
 	XMFLOAT3 getForwardVector();
 
@@ -44,4 +47,6 @@ private:
 	float fallAcceleration = 0.f;
 	float jumpAcceleration = -1.f;
 	bool bJumping = false;
+
+	NetworkManager* networkManager;
 };

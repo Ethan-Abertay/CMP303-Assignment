@@ -50,8 +50,12 @@ void Server::run()
 
 		sendMessages();				// Send messages
 
+		manageClients(dt);			// Manage clients
+
 		// Determine how long to sleep to hit tick rate
 		float delay = tickDelay - (float)clock.getElapsedTime().asMilliseconds();
+		if (delay < 0.f)
+			delay = 0.f;
 		printf("Delay is %.3fms\n", delay);
 		Sleep(delay);
 	}
@@ -64,19 +68,18 @@ void Server::receiveMessages()
 	sf::IpAddress sendersIP;
 	unsigned short sendersPort;
 
-	// Lambda to handle request join message
 	auto handleRequestJoin = [&](MessageHeader* msg)
 	{
 		// Ensure this socket doesn't already exist
-		for (auto &it : clients)	// Iterate through unordered map with constant complexity O(1)
+		for (auto it = clients.begin(); it != clients.end(); it++)	// Iterate through unordered map with constant complexity O(1) per iteration
 		{
-			if (it.second)
+			if (it->second)
 			{
-				if (it.second->address == sendersIP && it.second->port == sendersPort)
+				if (it->second->address == sendersIP && it->second->port == sendersPort)
 				{
 					// This socket is already joined, must return 
 					printf("Client is already on the server\nResending Join Accept Message...\n");
-					sendJoinAcceptMessage(it.first);
+					sendJoinAcceptMessage(it->first);
 					return;
 				}
 			}
@@ -107,22 +110,44 @@ void Server::receiveMessages()
 	};
 	auto handleUpdateInfo = [&](UpdateInfoMessage* msg)
 	{
-		// Get the correct client
-		Client* client = clients[msg->ID];
-
-		if (client)
+		// If this is a client
+		if (msg->entity == Entity::Client)
 		{
-			// Add the new packet info on
-			client->newInfoPacket(msg->infoPacket);
+			// Get the correct client
+			Client* client = clients[msg->ID];
 
-			printf("Received info packet from client: %i\n", msg->ID);
+			if (client)
+			{
+				// Set time since last message to 0
+				client->timeSinceLastMessage = 0.f;
+
+				// Add the new packet info on
+				client->newInfoPacket(msg->infoPacket);
+
+				printf("Received info packet from client: %i\n", msg->ID);
+			}
 		}
+	};
+	auto handleClientDisconect = [&](ClientDisconnectMessage* msg)
+	{		
+		// Tell each client except this client that this client is disconnecting
+		for (auto it = clients.begin(); it != clients.end(); it++)
+		{
+			if (it->first != msg->ID)	// Don't message same client that's disconnecting
+			{
+				socket.send((char*)&*msg, msg->header.messageSize, it->second->address, it->second->port);
+			}
+		}
+
+		// Delete enemy
+		delete clients[msg->ID];
+		clients.erase(msg->ID);
 	};
 
 	// The message buffer is always reset before calling receive
 	assert(msg_buffer[0] == 0);
 
-	do
+	while (true)
 	{
 		// Attempt to read from socket. 
 		sf::Socket::Status status = socket.receive(&msg_buffer, PACKET_LIMIT, receivedSize, sendersIP, sendersPort);
@@ -155,6 +180,12 @@ void Server::receiveMessages()
 				handleUpdateInfo(msg_full);
 				break;
 			}
+			case MessageType::ClientDisconnect:
+			{
+				ClientDisconnectMessage* msg_full = (ClientDisconnectMessage*)&msg_buffer;
+				handleClientDisconect(msg_full);
+				break;
+			}
 			}
 
 			// Clear the message buffer using the exact size to increase efficiency
@@ -171,7 +202,7 @@ void Server::receiveMessages()
 			// Reset the message buffer and continue
 			resetMsgBuffer();
 		}
-	} while (true);
+	}
 }
 
 void Server::sendMessages()
@@ -184,14 +215,82 @@ void Server::sendMessages()
 	// Update each client with all other clients's latest information
 	for (auto it = clients.begin(); it != clients.end(); it++)
 	{
+		// Continue if client is null
+		if (!it->second)
+			continue;
+
 		for (auto it2 = clients.begin(); it2 != clients.end(); it2++)
 		{
+			// Continue if client is null
+			if (!it2->second)
+				continue;
+
 			// Don't send clients info about themselves
 			if (it != it2)
 			{
 				sendUpdateInfo(it2->second, it->second);
 			}
 		}
+	}
+}
+
+void Server::manageClients(float dt)
+{
+	vector<unsigned int> eraseKeys;
+
+	// Increment each client's timer and check to see if any have timed out
+	for (auto it = clients.begin(); it != clients.end(); it++)	// Iterate through map
+	{
+		if (it->second)
+		{
+			// Increment timer
+			it->second->timeSinceLastMessage += dt;
+
+			// Check for time out
+			if (it->second->timeSinceLastMessage >= TIMEOUT)
+			{
+				// Flag for removal
+				eraseKeys.push_back(it->first);
+			}
+		}
+	}
+
+	// Erase flagged clients
+	for (int i = 0; i < eraseKeys.size(); i++)
+	{
+		// Construct disconnect message
+		ClientDisconnectMessage msg;
+		msg.header.messageType = MessageType::ClientDisconnect;
+		msg.header.messageSize = sizeof(ClientDisconnectMessage);
+		msg.ID = eraseKeys[i];
+
+		// Tell all other clients that this client has disconnected
+		// If this packet is lost, the disconnected client will timeout for the other client anyway
+		for (auto it = clients.begin(); it != clients.end(); it++)
+		{
+			if (it->second)
+			{
+				// Don't send message to a client about to a disconnected client
+				bool bContinue = false;
+				for (int j = 0; j < eraseKeys.size(); j++)
+				{
+					if (it->first == eraseKeys[j])	// If this client is a disconnected client
+					{
+						bContinue = true;
+						break;
+					}
+				}
+				if (bContinue)
+					continue;
+
+				// Send message to this client about the disconnected client
+				//socket.send((char*)&msg, msg.header.messageSize, it->second->address, it->second->port);
+			}
+		}
+
+		// Delete client
+		delete clients[eraseKeys[i]];
+		clients.erase(eraseKeys[i]);
 	}
 }
 
@@ -220,6 +319,7 @@ void Server::sendUpdateInfo(Client* enemy, Client* player)
 	UpdateInfoMessage msg;
 	msg.header.messageType = MessageType::UpdateInfo;
 	msg.header.messageSize = sizeof(UpdateInfoMessage);
+	msg.entity = Entity::Client;
 	msg.ID = enemy->ID;
 	msg.infoPacket = enemy->getLatestInfoPacket();
 

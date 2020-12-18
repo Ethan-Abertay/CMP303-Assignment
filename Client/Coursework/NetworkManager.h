@@ -7,10 +7,14 @@
 
 #include <unordered_map>
 #include <thread>
+#include <chrono>		// Used for ping timing
 
 // Using declerations
 using std::unordered_map;
 using std::thread;
+using std::chrono::time_point;
+
+typedef std::chrono::high_resolution_clock chronoClock;
 
 // Forward declerations
 class App1;
@@ -23,25 +27,31 @@ public:
 
 	void frame(float dt);
 
-	// Setters
 	void newServer(string newIP, uint32_t newPort);
+	void disconnect();
+	void shoot(XMFLOAT3 position, XMFLOAT3 forward);
+
+	// Getters
+	float getServerTime() { return currentTime; };
 
 private:
-	// Netowrk functions
+	// Network functions
 	void receiveMessages();
 	void sendJoinRequestMessage();
 	void receiveJoinAcceptMessage();
 	void sendPing();
-	float receivePing();		// Returns the ping
+	bool receivePing();		// Returns true if the ping was received
 	void sendUpdateInfo();
 
 	// Auxiliary Functions
 	void resetMsgBuffer(int size = PACKET_LIMIT) { memset(&msg_buffer, 0, size); };
 	Vector3<float> XMToVec3(XMFLOAT3 f3);
+	XMFLOAT3 Vec3ToXM(Vector3<float> v3);
 	template<class A, class B> bool keyExists(unordered_map<A, B>& map_, A key);
 
 	// Other functions
 	void ping();
+	void manageEnemies();
 
 	// Class pointers
 	App1* app1;
@@ -64,14 +74,13 @@ private:
 	float establishConnectionTimer = 0;
 
 	// Ping related variables
-	thread* pingThread = 0;
+	thread* pingThread = 0;			// Thread used to find the ping
 	bool bSentPing = false;			// Whether not the client has sent a ping request or not
-	float pingSentTime = 0;			// The time at which a ping message was sent
-	float pingTimeout = 5.f;		// The time taken to send another ping (in seconds)
-	float pingTimer = 0;			// The current timer for ping timeout
-	int noOfTimesToPing = 10;		// The number of times to ping the server to adjust the current time
-	int currentPingNo = 0;			// The current ping number
-	float pingSum = 0;				// The current sum of all pings in milliseconds
+	const float pingTimeout = 5.f;		// The time taken to send another ping (in seconds)
+	float pingTimer = 0;				// The current timer for ping timeout
+	const int noOfTimesToPing = 10;		// The number of times to ping the server to adjust the current time
+	int currentPingNo = 0;				// The current ping number
+	float pingSum = 0;
 
 	// Network variables
 	float tickDelayMax = 1.f / (float)CLIENT_TICK_RATE;	// The delay between ticks in seconds

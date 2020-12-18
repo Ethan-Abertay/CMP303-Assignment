@@ -19,8 +19,9 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	m_postProcessWidth = screenWidth / 2;
 	m_postProcessHeight = screenHeight / 2;
 
-	// Set camera to walk mode
-	camera->bWalkMode = true;
+	// Handle camera
+	camera->bWalkMode = true;	// Set camera to walk mode
+
 
 	// Initialise player
 	player = new Player(camera);
@@ -43,6 +44,10 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	textureMgr->loadTexture(L"rockSoil", L"res/RockSoil_Albedo.tif");
 	textureMgr->loadTexture(L"rockSoilDisplacement", L"res/RockSoil_Displacement.tif");
 	textureMgr->loadTexture(L"rockSoilNormal", L"res/RockSoil_Normal.tif");
+
+	// Projectile mesh
+	projectile = new HighLevelMesh(new SphereMesh(renderer->getDevice(), renderer->getDeviceContext()));
+	projectile->addWorldMatrix(XMMatrixIdentity());
 
 	// Initalise meshes
 	// Tessellated walls
@@ -228,8 +233,19 @@ bool App1::frame()
 		return false;
 	}
 	
-	// Update networking
-	networkManager->frame(timer->getTime());
+	// Get dt
+	const float dt = timer->getTime();
+
+	// Update player (before or after doesn't currently matter)
+	player->frame(dt);
+
+	// Update networking before rendering
+	networkManager->frame(dt);
+
+	// Update enemies with latest network info
+	const float serverTime = networkManager->getServerTime();	// Get the latest server time
+	for (int i = 0; i < enemies.size(); i++)
+		enemies[i]->frame(dt, serverTime);
 
 	// Render the graphics.
 	result = render();
@@ -247,6 +263,28 @@ Enemy* App1::createEnemy()
 	Enemy* newEnemy = new Enemy(renderer->getDevice());		// This object instance (App1) will destroy the enemies
 	enemies.push_back(newEnemy);							// Add this enemy to the vector
 	return newEnemy;	// Return the enemy 
+}
+
+void App1::deleteEnemy(Enemy* enemy)
+{
+	for (int i = 0; i < enemies.size(); i++)
+	{
+		if (enemies[i] == enemy)	// If this vector element points to the correct enemy to delete
+		{
+			enemies.erase(enemies.begin() + i);
+			break;
+		}
+	}
+}
+
+void App1::deleteAllEnemies()
+{
+	for (int i = 0; i < enemies.size(); i++)
+	{
+		delete enemies[i];
+		enemies[i] = 0;
+	}
+	enemies.clear();
 }
 
 bool App1::render()
@@ -295,9 +333,26 @@ void App1::gui()
 
 	ImGui::Begin("Networking");
 	
+
+	char input[16];
+	memset(&input[0], '\0', 16);
+	memcpy(&input[0], serverIP.c_str(), serverIP.size());
+	if (ImGui::InputText("Server IP", &input[0], 16))
+	{
+		serverIP = &input[0];
+	}
+	ImGui::InputInt("Server port", &serverPort);
+	if (ImGui::Button("Connect to specified server"))
+	{
+		networkManager->newServer(serverIP, serverPort);
+	}
 	if (ImGui::Button("Connect to Local Host"))
 	{
 		networkManager->newServer(LOCAL_IP, LOCAL_PORT);
+	}
+	if (ImGui::Button("Disconnect"))
+	{
+		networkManager->disconnect();
 	}
 
 	ImGui::End();
@@ -407,8 +462,15 @@ void App1::renderMeshes()
 			normalMeshes[i]->finalRender(sceneShader, renderer, params);
 		for (int i = 0; i < tessMeshes.size(); i++)
 			tessMeshes[i]->finalRender(tessHeightMapShader, renderer, tessParams);
+
+		// Colour of enemies
+		colourParams.colour = XMFLOAT4(0.5f, 0.f, 0.f, 1.f);
 		for (int i = 0; i < enemies.size(); i++)
 			enemies[i]->mesh->colourRender(colourShader, renderer, colourParams);
+
+		// Colour of projectiles
+		colourParams.colour = XMFLOAT4(0.0f, 0.5f, 0.f, 1.f);
+		projectile->colourRender(colourShader, renderer, colourParams);
 	};
 
 	auto renderToBackBuffer = [&]()

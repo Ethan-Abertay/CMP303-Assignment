@@ -1,6 +1,7 @@
 // FPCamera class
 // Represents a single First Person camera with basic movement.
 #include "FPCamera.h"
+#include "../Coursework/NetworkManager.h"
 
 // Configure defaul camera 
 FPCamera::FPCamera(Input* in, int width, int height, HWND hnd)
@@ -124,6 +125,12 @@ void FPCamera::move(float dt)
 	//		ShowCursor(false);
 	//	}
 	//}
+
+	// Shooting
+	if (input->isKeyDown(VK_SPACE))
+	{
+		networkManager->shoot(getPosition(), getForwardVector());
+	}
 
 	// Gravity
 	if (bWalkMode)

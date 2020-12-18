@@ -20,7 +20,11 @@ Client::Client(sf::IpAddress addrs, unsigned short port_param, unsigned int ID_p
 Client::~Client()
 {
 	// Delete info packets
-	delete infoPackets;
+	if (infoPackets)
+	{
+		delete infoPackets;
+		infoPackets = 0;
+	}
 }
 
 void Client::newInfoPacket(InfoPacket& info)

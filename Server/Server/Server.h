@@ -25,6 +25,7 @@ private:
 	void run();
 	void receiveMessages();
 	void sendMessages();
+	void manageClients(float dt);
 
 	// Send functions
 	void sendJoinAcceptMessage(int ID);

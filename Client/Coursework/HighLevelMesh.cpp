@@ -97,9 +97,11 @@ void HighLevelMesh::depthRender(TessHeightMapDepthShader* shader, TessHeightMapD
 
 void HighLevelMesh::colourRender(SimpleColourShader* shader, D3D* renderer, SimpleColourShader::Params& params)
 {
-	params.world = worldMatrices[0];
-
-	mesh->sendData(renderer->getDeviceContext());			// Send mesh data
-	shader->setShaderParameters(params);					// Set shader parameterss
-	shader->render(renderer->getDeviceContext(), mesh->getIndexCount());	// Render
+	for (int i = 0; i < worldMatrices.size(); i++)
+	{
+		params.world = worldMatrices[i];
+		mesh->sendData(renderer->getDeviceContext());			// Send mesh data
+		shader->setShaderParameters(params);					// Set shader parameters
+		shader->render(renderer->getDeviceContext(), mesh->getIndexCount());	// Render
+	}
 }

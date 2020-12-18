@@ -32,7 +32,11 @@ public:
 
 	bool frame();
 
+	// Network called functions
 	Enemy* createEnemy();
+	void deleteEnemy(Enemy* enemy);
+	void deleteAllEnemies();
+
 
 protected:
 	bool render();
@@ -48,6 +52,7 @@ private:
 	vector<HighLevelMesh*> normalMeshes;	// All generic meshes
 	vector<HighLevelMesh*> tessMeshes;		// All meshes that use the tessellation shaders
 	vector<Enemy*> enemies;					// All enemies to render
+	HighLevelMesh* projectile;				// The projectiles
 
 	// Player
 	Player* player;
@@ -94,6 +99,10 @@ private:
 	int *maxTessellationFactor = 0;
 	int *maxTessDistance = 0;
 	float *maxHeight = 0;
+
+	// Server Variables
+	string serverIP = "";
+	int serverPort = 0;
 };
 
 #endif
