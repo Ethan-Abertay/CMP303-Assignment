@@ -5,12 +5,15 @@
 #include <Windows.h>	// Contains Sleep()
 #include <vector>
 #include <unordered_map>
+#include <list>
 
 #include "Client.h"
+#include "Projectile.h"
 
 using std::thread;
 using std::vector;
 using std::unordered_map;
+using std::list;
 
 class Server
 {
@@ -26,6 +29,7 @@ private:
 	void receiveMessages();
 	void sendMessages();
 	void manageClients(float dt);
+	void manageProjectiles(float dt);
 
 	// Send functions
 	void sendJoinAcceptMessage(int ID);
@@ -41,7 +45,8 @@ private:
 
 	// Network variables
 	sf::UdpSocket socket;
-	unordered_map<unsigned int, Client*> clients;
+	unordered_map<unsigned int, Client*> clients;	// Map used for constant time access by key
+	list<Projectile*> projectiles;				// Forward list used for fast random deletion 
 	char msg_buffer[PACKET_LIMIT];
 
 	// Timing variables

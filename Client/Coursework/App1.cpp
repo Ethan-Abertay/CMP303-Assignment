@@ -28,6 +28,7 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 
 	// Initialise network manager
 	networkManager = new NetworkManager(this, player);
+	player->init(networkManager);
 
 	// Initialise shaders
 	sceneShader = new SceneShader(renderer->getDevice(), hwnd);
@@ -44,10 +45,6 @@ void App1::init(HINSTANCE hinstance, HWND hwnd, int screenWidth, int screenHeigh
 	textureMgr->loadTexture(L"rockSoil", L"res/RockSoil_Albedo.tif");
 	textureMgr->loadTexture(L"rockSoilDisplacement", L"res/RockSoil_Displacement.tif");
 	textureMgr->loadTexture(L"rockSoilNormal", L"res/RockSoil_Normal.tif");
-
-	// Projectile mesh
-	projectile = new HighLevelMesh(new SphereMesh(renderer->getDevice(), renderer->getDeviceContext()));
-	projectile->addWorldMatrix(XMMatrixIdentity());
 
 	// Initalise meshes
 	// Tessellated walls
@@ -239,6 +236,17 @@ bool App1::frame()
 	// Update player (before or after doesn't currently matter)
 	player->frame(dt);
 
+	// Update projectiles (they are just visuals on client, hit reg is server side)
+	for (auto it = projectiles.begin(); it != projectiles.end();)
+	{
+		if (!(*it)->frame(dt))
+		{
+			it = projectiles.erase(it);
+		}
+		else
+			it++;
+	}
+
 	// Update networking before rendering
 	networkManager->frame(dt);
 
@@ -285,6 +293,13 @@ void App1::deleteAllEnemies()
 		enemies[i] = 0;
 	}
 	enemies.clear();
+}
+
+void App1::newProjectile(XMFLOAT3 pos, XMFLOAT3 vel, float timeout)
+{
+	Projectile *projectile = new Projectile(new SphereMesh(renderer->getDevice(), renderer->getDeviceContext()), pos, vel, timeout);
+	projectile->addWorldMatrix(XMMatrixIdentity());
+	projectiles.push_front(projectile);
 }
 
 bool App1::render()
@@ -470,7 +485,8 @@ void App1::renderMeshes()
 
 		// Colour of projectiles
 		colourParams.colour = XMFLOAT4(0.0f, 0.5f, 0.f, 1.f);
-		projectile->colourRender(colourShader, renderer, colourParams);
+		for (auto it = projectiles.begin(); it != projectiles.end(); it++)
+			(*it)->colourRender(colourShader, renderer, colourParams);
 	};
 
 	auto renderToBackBuffer = [&]()

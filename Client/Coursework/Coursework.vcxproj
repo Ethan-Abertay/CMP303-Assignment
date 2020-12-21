@@ -176,6 +176,7 @@
     <ClCompile Include="NetworkManager.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="PlayerMesh.cpp" />
+    <ClCompile Include="Projectile.cpp" />
     <ClCompile Include="SceneShader.cpp" />
     <ClCompile Include="SimpleColourShader.cpp" />
     <ClCompile Include="TessellatablePlane.cpp" />
@@ -193,6 +194,7 @@
     <ClInclude Include="NetworkManager.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="PlayerMesh.h" />
+    <ClInclude Include="Projectile.h" />
     <ClInclude Include="SceneShader.h" />
     <ClInclude Include="SimpleColourShader.h" />
     <ClInclude Include="TessellatablePlane.h" />

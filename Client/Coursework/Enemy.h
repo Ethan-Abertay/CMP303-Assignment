@@ -8,7 +8,7 @@
 using std::deque;
 
 // Forward declerations
-class InfoPacket;
+class ClientInfoPacket;
 
 class Enemy
 {
@@ -18,7 +18,7 @@ public:
 
 	void frame(float dt, float serverTime);
 
-	void newInfoUpdate(InfoPacket& packet);
+	void newInfoUpdate(ClientInfoPacket& packet);
 
 	HighLevelMesh* mesh;
 
@@ -27,7 +27,7 @@ public:
 private:
 	void setPosition(XMFLOAT3 newPos);
 
-	deque<InfoPacket> *infoPackets;	// Must be pointer because InfoPacket is forward decelared in header
+	deque<ClientInfoPacket> *infoPackets;	// Must be pointer because InfoPacket is forward decelared in header
 	const float expireTime = 1.f;
 
 	const XMMATRIX meshTranslation = XMMatrixTranslation(0.f, -1.f, 0.f);		// Translates the mesh to the correct position

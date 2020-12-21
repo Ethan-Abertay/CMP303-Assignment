@@ -13,8 +13,7 @@ Client::Client(sf::IpAddress addrs, unsigned short port_param, unsigned int ID_p
 	ID = ID_param;
 
 	// Initialise info packets deque
-	infoPackets = new deque<InfoPacket>;
-	/* For now, do this so it's easy to pop front */ infoPackets->push_back(InfoPacket());
+	infoPackets = new deque<ClientInfoPacket>;
 }
 
 Client::~Client()
@@ -27,11 +26,28 @@ Client::~Client()
 	}
 }
 
-void Client::newInfoPacket(InfoPacket& info)
+void Client::newInfoPacket(ClientInfoPacket& info)
 {
 	// Push to back
 	infoPackets->push_back(info);
 
-	// Pop off front for now
-	infoPackets->pop_front();
+	// Detect if oldest packet is over a second old, if so, delete it
+	if (infoPackets->front().time + 1.f < infoPackets->back().time)
+		infoPackets->pop_front();
+
+	// It is not worth iterating through all packets every frame to check since this is only done once a new packet is added which will limit the overall size
+}
+
+ClientInfoPacket* Client::getLatestInfoPacket()
+{
+	if (infoPackets->size() > 0)
+		return &infoPackets->back();
+	return 0;
+}
+
+ClientInfoPacket* Client::getSecondLastInfoPacket()
+{
+	if (infoPackets->size() > 1)
+		return &(*infoPackets)[infoPackets->size() - 2];
+	return 0;
 }

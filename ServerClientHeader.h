@@ -19,7 +19,10 @@
 
 #define PACKET_LIMIT sf::UdpSocket::MaxDatagramSize
 
+#define PROJECTILE_TIMEOUT 5.f
+
 #define TIMEOUT 10.f
+#define PROJECTILE_MAX_RANGE 100.f
 
 #include <string>
 
@@ -57,7 +60,7 @@ struct Vector3
 	};
 
 	// Operators
-	Vector3<T> operator+(const Vector3<T> vec) const
+	Vector3<T> operator+(const Vector3<T> vec) const 
 	{
 		Vector3<T> output = *this;
 		output.x += vec.x;
@@ -65,7 +68,7 @@ struct Vector3
 		output.z += vec.z;
 		return output;
 	}
-	Vector3<T> operator-(const Vector3<T> vec) const 
+	Vector3<T> operator-(const Vector3<T> vec) const  
 	{
 		Vector3<T> output = *this;
 		output.x -= vec.x;
@@ -73,7 +76,13 @@ struct Vector3
 		output.z -= vec.z;
 		return output;
 	}
-	Vector3<T> operator*(const Vector3<T> vec) const 
+	void operator+=(const Vector3<T> vec) 
+	{
+		x += vec.x;
+		y += vec.y;
+		z += vec.z;
+	}
+	Vector3<T> operator*(const Vector3<T> vec) const  
 	{
 		Vector3<T> output = *this;
 		output.x *= vec.x;
@@ -81,7 +90,7 @@ struct Vector3
 		output.z *= vec.z;
 		return output;
 	}
-	Vector3<T> operator*(const T val) const 
+	Vector3<T> operator*(const T val) const  
 	{
 		Vector3<T> output = *this;
 		output.x *= val;
@@ -91,9 +100,42 @@ struct Vector3
 	}
 	
 	// Static Functions
-	static float length(Vector3<T> vec)
+	static float length(const Vector3<T> vec) 
 	{
 		return sqrtf(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+	}
+
+	// Member Functions
+	Vector3<T> cross(const Vector3<T> vec) const
+	{
+		Vector3<T> output;
+		output.x = y * vec.z - z * vec.y;
+		output.y = z * vec.x - x * vec.z;
+		output.z = x * vec.y - y * vec.x;
+		return output;
+	}
+	float dot(const Vector3<T> vec) const
+	{
+		return x * vec.x + y * vec.y + z * vec.z;
+	}
+	void normalized()
+	{
+		float magnitude = length(*this);
+		x /= magnitude;
+		y /= magnitude;
+		z /= magnitude;
+	}
+	float angle(const Vector3<T> vec) const
+	{
+		return acosf(dot(vec) / (length() * length(vec)));
+	}
+	float length() const
+	{
+		return length(*(this));
+	}
+	float sum() const
+	{
+		return x + y + z;
 	}
 
 	// Variables
@@ -109,18 +151,26 @@ struct MessageHeader
 	MessageType messageType;
 };
 
-// The game information passed between clients and stored by the server
-struct InfoPacket
+// The game information passed by clients and stored by the server
+struct ClientInfoPacket
 {
 	Vector3<float> position;
 	float time;
 };
 
-// Used to update a client's position
+// Sent by client to server to construct projectile
+struct ProjectileShotPacket
+{
+	Vector3<float> position;
+	Vector3<float> velocity;	// In m/s
+	float time;					// Time the projectile was shot
+};
+
+// Used to update an entity's position
 struct UpdateInfoMessage
 {
 	MessageHeader header;
-	InfoPacket infoPacket;
+	ClientInfoPacket infoPacket;
 	Entity entity;
 	unsigned int ID;
 };
@@ -142,12 +192,11 @@ struct ClientDisconnectMessage
 };
 
 // Sent by client to tell server that a projectile has been fired
-struct ProjectileFiredMessage
+struct ProjectileShotMessage
 {
 	MessageHeader header;
-	Vector3<float> startPos;
-	Vector3<float> velocity;	// In m/s
-	unsigned int ID;			// ID of shooter
+	ProjectileShotPacket infoPacket;
+	unsigned int ID;	// ID of shooter
 };
 
 // Sent by server to tell client they have been hit
@@ -168,9 +217,9 @@ class Interp
 public:
 
 	// Returns an info packet interpolated to the supplied time
-	static InfoPacket interpolate(InfoPacket oldPacket, InfoPacket newPacket, float time)
+	static ClientInfoPacket interpolate(ClientInfoPacket oldPacket, ClientInfoPacket newPacket, float time)
 	{
-		InfoPacket output;
+		ClientInfoPacket output;
 		output.time = time;
 		
 		// Get direction vector

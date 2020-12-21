@@ -19,6 +19,14 @@ Server::~Server()
 		it.second = 0;
 	}
 	clients.clear();
+
+	// Delete projectiles
+	for (auto it = projectiles.begin(); it != projectiles.end(); it++)
+	{
+		delete *it;
+		*it = 0;
+	}
+	projectiles.clear();
 }
 
 void Server::init(string serverIP, int port)
@@ -51,6 +59,8 @@ void Server::run()
 		sendMessages();				// Send messages
 
 		manageClients(dt);			// Manage clients
+
+		manageProjectiles(dt);		// Manage projectiles
 
 		// Determine how long to sleep to hit tick rate
 		float delay = tickDelay - (float)clock.getElapsedTime().asMilliseconds();
@@ -110,11 +120,10 @@ void Server::receiveMessages()
 	};
 	auto handleUpdateInfo = [&](UpdateInfoMessage* msg)
 	{
-		// If this is a client
-		if (msg->entity == Entity::Client)
+		if (msg->entity == Entity::Client) // If this is a client
 		{
 			// Get the correct client
-			Client* client = clients[msg->ID];
+			Client* client = clients[msg->ID];	// This creates this index and sets second to null
 
 			if (client)
 			{
@@ -125,6 +134,11 @@ void Server::receiveMessages()
 				client->newInfoPacket(msg->infoPacket);
 
 				printf("Received info packet from client: %i\n", msg->ID);
+			}
+			else
+			{
+				// Delete the empty second
+				clients.erase(msg->ID);
 			}
 		}
 	};
@@ -142,6 +156,20 @@ void Server::receiveMessages()
 		// Delete enemy
 		delete clients[msg->ID];
 		clients.erase(msg->ID);
+	};
+	auto handleProjectileShot = [&](ProjectileShotMessage* msg)
+	{
+		// Add projectile to the list
+		projectiles.push_front(new Projectile(&clients, msg->infoPacket, msg->ID));
+
+		// Tell all clients (except sender) that this projectile now exists
+		for (auto it = clients.begin(); it != clients.end(); it++)
+		{
+			if (it->second->ID != msg->ID)
+			{
+				socket.send((char*)&*msg, msg->header.messageSize, it->second->address, it->second->port);
+			}
+		}
 	};
 
 	// The message buffer is always reset before calling receive
@@ -184,6 +212,12 @@ void Server::receiveMessages()
 			{
 				ClientDisconnectMessage* msg_full = (ClientDisconnectMessage*)&msg_buffer;
 				handleClientDisconect(msg_full);
+				break;
+			}
+			case MessageType::ProjectileShot:
+			{
+				ProjectileShotMessage* msg_full = (ProjectileShotMessage*)&msg_buffer;
+				handleProjectileShot(msg_full);
 				break;
 			}
 			}
@@ -284,13 +318,27 @@ void Server::manageClients(float dt)
 					continue;
 
 				// Send message to this client about the disconnected client
-				//socket.send((char*)&msg, msg.header.messageSize, it->second->address, it->second->port);
+				socket.send((char*)&msg, msg.header.messageSize, it->second->address, it->second->port);
 			}
 		}
 
 		// Delete client
 		delete clients[eraseKeys[i]];
 		clients.erase(eraseKeys[i]);
+	}
+}
+
+void Server::manageProjectiles(float dt)
+{
+	// Update each projectile and delete if frame returns false
+	for (auto it = projectiles.begin(); it != projectiles.end();)
+	{
+		if (!(*it)->frame(dt))
+		{
+			it = projectiles.erase(it);
+		}
+		else
+			it++;
 	}
 }
 
@@ -316,12 +364,17 @@ void Server::sendJoinAcceptMessage(int ID)
 
 void Server::sendUpdateInfo(Client* enemy, Client* player)
 {
+	// Check the enemy currently has info to send
+	auto* packet_ptr = enemy->getLatestInfoPacket();
+	if (!packet_ptr)
+		return;
+
 	UpdateInfoMessage msg;
 	msg.header.messageType = MessageType::UpdateInfo;
 	msg.header.messageSize = sizeof(UpdateInfoMessage);
 	msg.entity = Entity::Client;
 	msg.ID = enemy->ID;
-	msg.infoPacket = enemy->getLatestInfoPacket();
+	msg.infoPacket = *packet_ptr;
 
 	// Attempt to send message
 	socket.send((char*)&msg, msg.header.messageSize, player->address, player->port);

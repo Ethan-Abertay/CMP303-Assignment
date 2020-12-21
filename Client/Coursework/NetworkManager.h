@@ -52,6 +52,7 @@ private:
 	// Other functions
 	void ping();
 	void manageEnemies();
+	void spawnProjectile(ProjectileShotPacket &info);
 
 	// Class pointers
 	App1* app1;

@@ -78,6 +78,9 @@
     <ClCompile Include="NetworkManager.cpp">
       <Filter>Source Files\Game Components</Filter>
     </ClCompile>
+    <ClCompile Include="Projectile.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="App1.h">
@@ -127,6 +130,9 @@
     </ClInclude>
     <ClInclude Include="..\..\ServerClientHeader.h">
       <Filter>Header Files\Game Components</Filter>
+    </ClInclude>
+    <ClInclude Include="Projectile.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

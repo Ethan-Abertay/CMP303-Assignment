@@ -7,15 +7,18 @@
 #include "DepthShader.h"
 #include "TextureShader.h"
 #include <vector>
+#include <list>
 
 // My classes
 #include "XM_Math.h"
 #include "HighLevelMesh.h"
 #include "TessellatablePlane.h"
 #include "NetworkManager.h"
+#include "Projectile.h"
 
 // Using declerations
 using std::vector;
+using std::list;
 
 // Defines
 #define SMAP_SIZE 2048.f    /* The dimensions of the shadow maps */
@@ -36,6 +39,7 @@ public:
 	Enemy* createEnemy();
 	void deleteEnemy(Enemy* enemy);
 	void deleteAllEnemies();
+	void newProjectile(XMFLOAT3 pos, XMFLOAT3 vel, float timeout);
 
 
 protected:
@@ -52,7 +56,7 @@ private:
 	vector<HighLevelMesh*> normalMeshes;	// All generic meshes
 	vector<HighLevelMesh*> tessMeshes;		// All meshes that use the tessellation shaders
 	vector<Enemy*> enemies;					// All enemies to render
-	HighLevelMesh* projectile;				// The projectiles
+	list<Projectile*> projectiles;			// The projectiles
 
 	// Player
 	Player* player;

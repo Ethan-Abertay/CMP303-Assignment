@@ -15,10 +15,11 @@ public:
 	Client(sf::IpAddress addrs, unsigned short port_param, unsigned int ID_param);
 	~Client();
 
-	void newInfoPacket(InfoPacket& info);
+	void newInfoPacket(ClientInfoPacket& info);
 
 	// Getters
-	InfoPacket& getLatestInfoPacket() { return infoPackets->back(); };
+	ClientInfoPacket* getLatestInfoPacket();
+	ClientInfoPacket* getSecondLastInfoPacket();
 
 	// Network info
 	sf::IpAddress address;
@@ -29,7 +30,7 @@ public:
 
 private:
 	// Game info
-	deque<InfoPacket>* infoPackets = 0;
+	deque<ClientInfoPacket>* infoPackets = 0;
 
 
 };

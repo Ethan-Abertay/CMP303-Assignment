@@ -114,15 +114,19 @@ void NetworkManager::shoot(XMFLOAT3 position, XMFLOAT3 forward)
 	if (player->canFire())
 	{
 		// Construct message
-		ProjectileFiredMessage msg;
+		ProjectileShotMessage msg;
 		msg.header.messageType = MessageType::ProjectileShot;
-		msg.header.messageSize = sizeof(ProjectileFiredMessage);
+		msg.header.messageSize = sizeof(ProjectileShotMessage);
+		msg.infoPacket.position = XMToVec3(position);
+		msg.infoPacket.velocity = XMToVec3(player->getFireVelocity(forward));
+		msg.infoPacket.time = currentTime;
 		msg.ID = ID;
-		msg.startPos = XMToVec3(position);
-		msg.velocity = XMToVec3(player->getFireVelocity(forward));
 
 		// Send message
 		socket.send((char*)&msg, msg.header.messageSize, serverIP, port);
+
+		// Spawn projectile
+		spawnProjectile(msg.infoPacket);
 	}
 }
 
@@ -134,8 +138,7 @@ void NetworkManager::receiveMessages()
 
 	auto handleUpdateInfo = [&](UpdateInfoMessage* msg)
 	{
-		// If this is a client
-		if (msg->entity == Entity::Client)
+		if (msg->entity == Entity::Client)	// If this is a client
 		{
 			// Create pointer
 			Enemy* enemy;
@@ -158,6 +161,10 @@ void NetworkManager::receiveMessages()
 			// Update enemy
 			enemy->newInfoUpdate(msg->infoPacket);
 		}
+		else if (msg->entity == Entity::Projectile)	// If this is a projectile
+		{
+
+		}
 	};
 	auto handleClientDisconnect = [&](ClientDisconnectMessage * msg)
 	{
@@ -167,6 +174,10 @@ void NetworkManager::receiveMessages()
 			app1->deleteEnemy(enemy);
 			enemies.erase(msg->ID);
 		}
+	};
+	auto handleProjectileShot = [&](ProjectileShotMessage* msg)
+	{
+		spawnProjectile(msg->infoPacket);
 	};
 
 	while (true)
@@ -198,6 +209,12 @@ void NetworkManager::receiveMessages()
 			{
 				ClientDisconnectMessage* msg_full = (ClientDisconnectMessage*)&msg_buffer;
 				handleClientDisconnect(msg_full);
+				break;
+			}
+			case MessageType::ProjectileShot:
+			{
+				ProjectileShotMessage* msg_full = (ProjectileShotMessage*)&msg_buffer;
+				handleProjectileShot(msg_full);
 				break;
 			}
 			}
@@ -473,5 +490,10 @@ void NetworkManager::manageEnemies()
 		app1->deleteEnemy(enemies[eraseKeys[i]]);
 		enemies.erase(eraseKeys[i]);
 	}
+}
+
+void NetworkManager::spawnProjectile(ProjectileShotPacket& info)
+{
+	app1->newProjectile(Vec3ToXM(info.position), Vec3ToXM(info.velocity), PROJECTILE_TIMEOUT);
 }
 

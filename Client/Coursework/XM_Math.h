@@ -23,7 +23,7 @@ public:
 		return f3;
 	}
 
-	static void add(XMFLOAT3& a, XMFLOAT3 b)
+	static void add_this(XMFLOAT3& a, XMFLOAT3 b)
 	{
 		a.x += b.x;
 		a.y += b.y;

@@ -8,7 +8,7 @@ Enemy::Enemy(ID3D11Device* device)
 	mesh->addWorldMatrix(XMMatrixIdentity());
 
 	// Initialise deque
-	infoPackets = new deque<InfoPacket>;
+	infoPackets = new deque<ClientInfoPacket>;
 }
 
 Enemy::~Enemy()
@@ -41,7 +41,7 @@ void Enemy::frame(float dt, float serverTime)
 			const float adjustedTime = serverTime - INTERP_BUFFER_TIME;
 
 			// Determine which packets to use for interpolation
-			InfoPacket* oldPacket = 0, * newPacket = 0;
+			ClientInfoPacket* oldPacket = 0, * newPacket = 0;
 			for (int i = infoPackets->size() - 1; i > 0; i--)
 			{
 				if ((*infoPackets)[i].time < adjustedTime || i == 0)
@@ -63,7 +63,7 @@ void Enemy::frame(float dt, float serverTime)
 			}
 
 			// Interpolate between packets
-			InfoPacket interpPacket = Interp::interpolate(*oldPacket, *newPacket, adjustedTime);
+			ClientInfoPacket interpPacket = Interp::interpolate(*oldPacket, *newPacket, adjustedTime);
 
 			// Set new position
 			const XMFLOAT3 newPos = XMFLOAT3(interpPacket.position.x, interpPacket.position.y, interpPacket.position.z);
@@ -91,7 +91,7 @@ void Enemy::frame(float dt, float serverTime)
 	}
 }
 
-void Enemy::newInfoUpdate(InfoPacket& packet)
+void Enemy::newInfoUpdate(ClientInfoPacket& packet)
 {
 	// Reset timer
 	timeSinceLastMessage = 0.f;
