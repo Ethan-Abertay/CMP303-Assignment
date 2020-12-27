@@ -17,7 +17,7 @@ private:
 public:
 	Projectile(unordered_map<unsigned int, Client*>* clients_ptr, ProjectileShotPacket infoPacket, unsigned int ID);
 
-	bool frame(float dt);
+	bool frame(float dt, float time);
 
 private:
 	unordered_map<unsigned int, Client*>* clients;	// A pointer to the clients map in the server.h

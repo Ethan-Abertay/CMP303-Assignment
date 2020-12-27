@@ -45,9 +45,22 @@ ClientInfoPacket* Client::getLatestInfoPacket()
 	return 0;
 }
 
-ClientInfoPacket* Client::getSecondLastInfoPacket()
+Client::RelevantPackets Client::getRelaventPackets(float time)
 {
-	if (infoPackets->size() > 1)
-		return &(*infoPackets)[infoPackets->size() - 2];
-	return 0;
+	RelevantPackets packets;
+
+	for (int i = infoPackets->size() - 1; i > 0; i--)
+	{
+		if (i + 1 < infoPackets->size())
+		{
+			if ((*infoPackets)[i].time < time || i == 0)
+			{
+				packets.oldPacket = &(*infoPackets)[i];
+				packets.newPacket = &(*infoPackets)[i + 1];
+				break;
+			}
+		}
+	}
+
+	return packets;
 }

@@ -21,6 +21,8 @@ public:
 
 	XMFLOAT3 getPosition() { return camera->getPosition(); };
 
+	void setPosition(float x, float y, float z) { camera->setPosition(x, y, z); };
+
 private:
 	FPCamera* camera;
 	NetworkManager* networkManager;

@@ -28,8 +28,8 @@ private:
 	void run();
 	void receiveMessages();
 	void sendMessages();
-	void manageClients(float dt);
-	void manageProjectiles(float dt);
+	void manageClients();
+	void manageProjectiles();
 
 	// Send functions
 	void sendJoinAcceptMessage(int ID);

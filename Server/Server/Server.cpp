@@ -58,9 +58,9 @@ void Server::run()
 
 		sendMessages();				// Send messages
 
-		manageClients(dt);			// Manage clients
+		manageClients();			// Manage clients
 
-		manageProjectiles(dt);		// Manage projectiles
+		manageProjectiles();		// Manage projectiles
 
 		// Determine how long to sleep to hit tick rate
 		float delay = tickDelay - (float)clock.getElapsedTime().asMilliseconds();
@@ -265,10 +265,24 @@ void Server::sendMessages()
 				sendUpdateInfo(it2->second, it->second);
 			}
 		}
+
+		// Detect if the client has been hit
+		if (it->second->bHit)
+		{
+			// Set flag false
+			it->second->bHit = false;
+			
+			// Send message
+			ClientHitMessage msg;
+			msg.header.messageType = MessageType::ClientHit;
+			msg.header.messageSize = sizeof(ClientHitMessage);
+			
+			socket.send((char*)&msg, msg.header.messageSize, it->second->address, it->second->port);
+		}
 	}
 }
 
-void Server::manageClients(float dt)
+void Server::manageClients()
 {
 	vector<unsigned int> eraseKeys;
 
@@ -328,12 +342,12 @@ void Server::manageClients(float dt)
 	}
 }
 
-void Server::manageProjectiles(float dt)
+void Server::manageProjectiles()
 {
 	// Update each projectile and delete if frame returns false
 	for (auto it = projectiles.begin(); it != projectiles.end();)
 	{
-		if (!(*it)->frame(dt))
+		if (!(*it)->frame(dt, currentTime))
 		{
 			it = projectiles.erase(it);
 		}

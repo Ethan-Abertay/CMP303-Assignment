@@ -125,6 +125,15 @@ struct Vector3
 		y /= magnitude;
 		z /= magnitude;
 	}
+	Vector3<T> normalize() const
+	{
+		float magnitude = length(*this);
+		Vector3<T> vec = *this;
+		vec.x /= magnitude;
+		vec.y /= magnitude;
+		vec.z /= magnitude;
+		return vec;
+	}
 	float angle(const Vector3<T> vec) const
 	{
 		return acosf(dot(vec) / (length() * length(vec)));

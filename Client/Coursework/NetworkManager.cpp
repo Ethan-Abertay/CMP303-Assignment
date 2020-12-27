@@ -179,6 +179,10 @@ void NetworkManager::receiveMessages()
 	{
 		spawnProjectile(msg->infoPacket);
 	};
+	auto handleClientHit = [&](ClientHitMessage* msg)
+	{
+		player->setPosition(0, 2, 0);
+	};
 
 	while (true)
 	{
@@ -215,6 +219,12 @@ void NetworkManager::receiveMessages()
 			{
 				ProjectileShotMessage* msg_full = (ProjectileShotMessage*)&msg_buffer;
 				handleProjectileShot(msg_full);
+				break;
+			}
+			case MessageType::ClientHit:
+			{
+				ClientHitMessage* msg_full = (ClientHitMessage*)&msg_buffer;
+				handleClientHit(msg_full);
 				break;
 			}
 			}

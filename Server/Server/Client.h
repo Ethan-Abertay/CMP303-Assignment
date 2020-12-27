@@ -11,6 +11,15 @@ using std::deque;
 class Client
 {
 public:
+	struct RelevantPackets
+	{
+		RelevantPackets() {};
+
+		ClientInfoPacket* oldPacket = 0;
+		ClientInfoPacket* newPacket = 0;
+	};
+
+public:
 	Client();
 	Client(sf::IpAddress addrs, unsigned short port_param, unsigned int ID_param);
 	~Client();
@@ -19,7 +28,7 @@ public:
 
 	// Getters
 	ClientInfoPacket* getLatestInfoPacket();
-	ClientInfoPacket* getSecondLastInfoPacket();
+	RelevantPackets getRelaventPackets(float time);
 
 	// Network info
 	sf::IpAddress address;
@@ -27,6 +36,7 @@ public:
 	unsigned int ID;
 
 	float timeSinceLastMessage = 0;
+	bool bHit = false;
 
 private:
 	// Game info
