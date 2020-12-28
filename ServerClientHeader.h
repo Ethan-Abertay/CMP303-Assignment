@@ -12,10 +12,10 @@
 #define CLIENT_TICK_RATE 16
 
 // Times (in seconds) for interp. and extrap.
-#define INTERP_BUFFER_TICKS 2	// The number of ticks to delay the clients by to interpolate
+#define INTERP_BUFFER_TICKS 3	// The number of ticks to delay the clients by to interpolate
 #define EXTRAP_TICK_MAX 4		// The maximum number of ticks in a row that can be lost before extrapolation stops
-#define INTERP_BUFFER_TIME 1.f / SERVER_TICK_RATE * INTERP_BUFFER_TICKS		// The length of time of the buffer for the defined number of ticks 
-#define EXTRAP_TIME_MAX 1.f / SERVER_TICK_RATE * EXTRAP_TICK_MAX			// The extrap tick converted into time
+#define INTERP_BUFFER_TIME 1.f / CLIENT_TICK_RATE * INTERP_BUFFER_TICKS		// The length of time of the buffer for the defined number of ticks 
+#define EXTRAP_TIME_MAX 1.f / CLIENT_TICK_RATE * EXTRAP_TICK_MAX			// The extrap tick converted into time
 
 #define PACKET_LIMIT sf::UdpSocket::MaxDatagramSize
 

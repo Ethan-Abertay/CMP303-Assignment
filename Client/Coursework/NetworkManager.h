@@ -82,6 +82,7 @@ private:
 	const int noOfTimesToPing = 10;		// The number of times to ping the server to adjust the current time
 	int currentPingNo = 0;				// The current ping number
 	float pingSum = 0;
+	float pingAdjustment = 0;
 
 	// Network variables
 	float tickDelayMax = 1.f / (float)CLIENT_TICK_RATE;	// The delay between ticks in seconds

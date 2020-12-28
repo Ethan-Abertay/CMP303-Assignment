@@ -8,6 +8,7 @@ Projectile::Projectile(unordered_map<unsigned int, Client*>* clients_ptr, Projec
 	newData.time = infoPacket.time;
 	velocity = infoPacket.velocity;
 	ownerID = ID;
+	startTime = infoPacket.time;
 }
 
 bool Projectile::frame(float dt, float time)
@@ -67,7 +68,7 @@ bool Projectile::frame(float dt, float time)
 		// A lot of this code was adapted from the following
 		// http://geomalgorithms.com/a07-_distance.html 
 		// This method allows the line between two lines' (which is the shortest) intersection of the 2 original lines to be easily found
-		// My previous method did not do this
+		// My previous method did not do this which had serious limitations 
 
 		// Set line direction vectors
 		u = projectileDisplacement;
@@ -79,8 +80,8 @@ bool Projectile::frame(float dt, float time)
 		w0 = p0 - q0;
 
 		// Get simutaneous equations params
-		// See reference to understand how to get equation
-		// Fundamentally works because the shortest line is perpendicular to both and dot product of both is hence 0, allow for sim. equations
+		// See reference above to understand how to get equation
+		// Fundamentally works because the shortest line is perpendicular to both and dot product of both is hence 0, allows for sim. equations
 		a = u.dot(u);
 		b = u.dot(v);
 		c = v.dot(v);
@@ -136,7 +137,7 @@ bool Projectile::frame(float dt, float time)
 				{
 					// If using a high tick rate server and connection quality is good than this will be sufficient hit detection
 					// However, if the gap between the two client packets is large than the shortest distance may be 0 but it should still miss
-					printf("Hit!\n");	// Output message to cmd
+					printf("Client %i was hit by a projectile from client %i\n", it->first, ownerID);	// Output message to cmd
 
 					// Flag client as hit
 					it->second->bHit = true;

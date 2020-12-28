@@ -147,7 +147,7 @@ void NetworkManager::receiveMessages()
 			if (!keyExists(enemies, msg->ID))
 			{
 				// Create new enemy
-				enemy = app1->createEnemy();
+				enemy = app1->createEnemy(pingAdjustment);
 
 				// Add enemy to map
 				enemies[msg->ID] = enemy;
@@ -163,7 +163,7 @@ void NetworkManager::receiveMessages()
 		}
 		else if (msg->entity == Entity::Projectile)	// If this is a projectile
 		{
-
+			// Currently, projectiles have nothing to update 
 		}
 	};
 	auto handleClientDisconnect = [&](ClientDisconnectMessage * msg)
@@ -464,7 +464,8 @@ void NetworkManager::ping()
 						ping = pingSum / (float)noOfTimesToPing;	// Get average
 						ping /= 2.f;						// Divide by two
 						ping /= 1000.f * 1000.f;			// Convert to seconds from microseconds
-						currentTime -= ping;				// Subtract by value
+						pingAdjustment = ping;
+						currentTime -= pingAdjustment;				// Subtract by value
 
 						// End ping calculations
 						bConnected = true;

@@ -36,7 +36,7 @@ public:
 	bool frame();
 
 	// Network called functions
-	Enemy* createEnemy();
+	Enemy* createEnemy(float pingAdjust);
 	void deleteEnemy(Enemy* enemy);
 	void deleteAllEnemies();
 	void newProjectile(XMFLOAT3 pos, XMFLOAT3 vel, float timeout);

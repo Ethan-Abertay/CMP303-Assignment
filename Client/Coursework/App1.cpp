@@ -265,10 +265,10 @@ bool App1::frame()
 	return true;
 }
 
-Enemy* App1::createEnemy()
+Enemy* App1::createEnemy(float pingAdjust)
 {
 	// Intialise enemy
-	Enemy* newEnemy = new Enemy(renderer->getDevice());		// This object instance (App1) will destroy the enemies
+	Enemy* newEnemy = new Enemy(renderer->getDevice(), pingAdjust);		// This object instance (App1) will destroy the enemies
 	enemies.push_back(newEnemy);							// Add this enemy to the vector
 	return newEnemy;	// Return the enemy 
 }

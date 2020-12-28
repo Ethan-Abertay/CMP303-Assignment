@@ -19,12 +19,16 @@ public:
 
 	bool frame(float dt, float time);
 
+	// Getters
+	float getStartTime() { return startTime; };
+
 private:
 	unordered_map<unsigned int, Client*>* clients;	// A pointer to the clients map in the server.h
 
 	// Projectile variables
 	Data oldData, newData;
 	Vector3<float> velocity;
+	float startTime;
 	unsigned int ownerID;
 	float timeout = PROJECTILE_TIMEOUT;
 

@@ -156,9 +156,16 @@ void Server::receiveMessages()
 		// Delete enemy
 		delete clients[msg->ID];
 		clients.erase(msg->ID);
+
+		// Output
+		printf("Client %i has disconnected\n", msg->ID);
 	};
 	auto handleProjectileShot = [&](ProjectileShotMessage* msg)
 	{
+		// Ensure this isn't a duplicated message
+		if (projectiles.size() > 1 && projectiles.front()->getStartTime() == msg->infoPacket.time)
+			return;
+
 		// Add projectile to the list
 		projectiles.push_front(new Projectile(&clients, msg->infoPacket, msg->ID));
 
@@ -170,6 +177,9 @@ void Server::receiveMessages()
 				socket.send((char*)&*msg, msg->header.messageSize, it->second->address, it->second->port);
 			}
 		}
+
+		// Output message
+		printf("Projectile shot by client: %i at %f seconds\n", msg->ID, msg->infoPacket.time);
 	};
 
 	// The message buffer is always reset before calling receive
@@ -383,6 +393,10 @@ void Server::sendUpdateInfo(Client* enemy, Client* player)
 	if (!packet_ptr)
 		return;
 
+	// Check we are not sending the same message twice unnecessarily 
+	if (packet_ptr->time == player->getLatestPacketTime(enemy->ID))
+		return;
+
 	UpdateInfoMessage msg;
 	msg.header.messageType = MessageType::UpdateInfo;
 	msg.header.messageSize = sizeof(UpdateInfoMessage);
@@ -392,6 +406,9 @@ void Server::sendUpdateInfo(Client* enemy, Client* player)
 
 	// Attempt to send message
 	socket.send((char*)&msg, msg.header.messageSize, player->address, player->port);
+
+	// Update latest message time
+	player->setLatestPacketTime(enemy->ID, msg.infoPacket.time);
 
 	printf("Sending info about client: %i, to client: %i\n", enemy->ID, player->ID);
 }

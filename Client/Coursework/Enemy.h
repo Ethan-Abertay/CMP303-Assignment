@@ -13,7 +13,7 @@ class ClientInfoPacket;
 class Enemy
 {
 public:
-	Enemy(ID3D11Device* device);
+	Enemy(ID3D11Device* device, float pingAdjust_);
 	~Enemy();
 
 	void frame(float dt, float serverTime);
@@ -29,6 +29,7 @@ private:
 
 	deque<ClientInfoPacket> *infoPackets;	// Must be pointer because InfoPacket is forward decelared in header
 	const float expireTime = 1.f;
+	float pingAdjustment = 0.f;
 
 	const XMMATRIX meshTranslation = XMMatrixTranslation(0.f, -1.f, 0.f);		// Translates the mesh to the correct position
 };

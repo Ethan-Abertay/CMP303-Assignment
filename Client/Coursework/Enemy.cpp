@@ -1,11 +1,14 @@
 #include "Enemy.h"
 #include "../../ServerClientHeader.h"
 
-Enemy::Enemy(ID3D11Device* device)
+Enemy::Enemy(ID3D11Device* device, float pingAdjust_)
 {
 	// Initialise meshes
 	mesh = new HighLevelMesh(new PlayerMesh(device, "res/playerModel.obj", XMFLOAT3(1.f, 0.25f, 0.25f)));
 	mesh->addWorldMatrix(XMMatrixIdentity());
+
+	// Initialise variables
+	pingAdjustment = pingAdjust_;
 
 	// Initialise deque
 	infoPackets = new deque<ClientInfoPacket>;
@@ -38,7 +41,7 @@ void Enemy::frame(float dt, float serverTime)
 		if (infoPackets->size() > 1)
 		{
 			// Get adjusted time
-			const float adjustedTime = serverTime - INTERP_BUFFER_TIME;
+			const float adjustedTime = serverTime - INTERP_BUFFER_TIME - pingAdjustment;
 
 			// Determine which packets to use for interpolation
 			ClientInfoPacket* oldPacket = 0, * newPacket = 0;
